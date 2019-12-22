@@ -13,7 +13,7 @@ ofdm_size = 32
 bits_per_symbol = 2
 code_rate = .5
 
-num_samples = np.power(2,12)
+num_samples = np.power(2,20)
 
 num_bits = num_samples * code_rate * bits_per_symbol * ofdm_size
 

@@ -9,13 +9,13 @@ from ofdm.ofdm_functions import load_tx, gen_qpsk_data, gen_qpsk_qdata
 
 #--- VARIABLES ---#
 
-num_epochs = 20
-batch_size = np.power(2, 10)
+num_epochs = 5000
+batch_size = np.power(2, 14)
 learning_rate = .001
-wmse_epsilon = 1e-1
+wmse_epsilon = ([1, 1e-1, 1e-3, 1e-4, 1e-6])
 
-qbits = np.array([1, 3])
-clipdb = np.array([-6, 0])
+qbits = np.array([1, 3, 5])
+clipdb = np.array([-6, -3, 0, 3, 6])
 
 #--- LOAD PRETRAINED NETWORK ---#
 
@@ -42,52 +42,55 @@ tx_signal, rx_signal, rx_symbols, rx_llrs, snrdb_list = gen_qpsk_data(enc_bits, 
 
 #--- TRAIN QUANTIZED ---#
 
-for qbits_idx, qbits_val in enumerate(qbits):
-    for clipdb_idx, clipdb_val in enumerate(clipdb):
-        print('Q-Bits: {}, Clip: {} dB'.format(qbits_val, clipdb_val))
-        
-        #--- GENERATE AND PREP QUANTIZED DATA ---#
-        
-        # Generate quantized data from the same SNR values already computed
-        qrx_signal_rescaled, qrx_symbols, qrx_llrs = gen_qpsk_qdata(rx_signal, snrdb_list, qbits_val, clipdb_val, ofdm_size)
-        
-        # Concatentate real and imaginary and reshape the data
-        input_samples = np.concatenate((qrx_signal_rescaled.real.T, qrx_signal_rescaled.imag.T), axis=1)
-        input_samples = input_samples.reshape(-1, 2*ofdm_size)
-        
-        # Add SNR to the input sample space
-        input_samples = np.concatenate((input_samples, np.power(10, snrdb_list/10)), axis=1)
-        
-        # Reshape proper LLRs for output
-        output_samples = rx_llrs.reshape(-1, 2*ofdm_size)
+for wmse_epsilon_idx, wmse_epsilon_val in enumerate(wmse_epsilon):
+    for qbits_idx, qbits_val in enumerate(qbits):
+        for clipdb_idx, clipdb_val in enumerate(clipdb):
+            print('Q-Bits: {}, Clip: {} dB, WMSE Epsilon: {}'.format(qbits_val, clipdb_val, wmse_epsilon_val))
             
-        #--- TRAIN NETWORK ---#
-        
-        llr_state_dict, optim_state_dict, train_loss = train_nn(input_samples, output_samples, ofdm_size, bits_per_symbol, expansion, num_epochs, batch_size, learning_rate, wmse_epsilon, pretrained_filename)
-        
-        ts = datetime.datetime.now()
-        
-        filename = ts.strftime('%Y%m%d-%H%M%S') + '_tx=' + tx_timestamp + '_qbits={}_clipdb={}_snrdb={}-{}_epochs={}_lr={}_epsilon={}.pth'.format(qbits_val, clipdb_val, snrdb_low, snrdb_high, num_epochs, learning_rate, wmse_epsilon)        
+            #--- GENERATE AND PREP QUANTIZED DATA ---#
             
-        filepath = 'outputs/model/' + filename
+            # Generate quantized data from the same SNR values already computed
+            qrx_signal_rescaled, qrx_symbols, qrx_llrs = gen_qpsk_qdata(rx_signal, snrdb_list, qbits_val, clipdb_val, ofdm_size)
             
-        torch.save({
-                'num_epochs': num_epochs,
-                'batch_size': batch_size,
-                'learning_rate': learning_rate,
-                'wmse_epsilon': wmse_epsilon_val,
-                'expansion': expansion,
+            # Concatentate real and imaginary and reshape the data
+            input_samples = np.concatenate((qrx_signal_rescaled.real.T, qrx_signal_rescaled.imag.T), axis=1)
+            input_samples = input_samples.reshape(-1, 2*ofdm_size)
+            
+            # Add SNR to the input sample space
+            input_samples = np.concatenate((input_samples, np.power(10, snrdb_list/10)), axis=1)
+            
+            # Reshape proper LLRs for output
+            output_samples = rx_llrs.reshape(-1, 2*ofdm_size)
                 
-                'pretrained_filename': pretrained_filename,
+            #--- TRAIN NETWORK ---#
+            
+            llr_state_dict, optim_state_dict, train_loss = train_nn(input_samples, output_samples, ofdm_size, bits_per_symbol, expansion, num_epochs, batch_size, learning_rate, wmse_epsilon_val, pretrained_filename)
+            
+            ts = datetime.datetime.now()
+            
+            filename = ts.strftime('%Y%m%d-%H%M%S') + '_tx=' + tx_timestamp + '_qbits={}_clipdb={}_snrdb={}-{}_epochs={}_lr={}_epsilon={}.pth'.format(qbits_val, clipdb_val, snrdb_low, snrdb_high, num_epochs, learning_rate, wmse_epsilon_val)        
                 
+            filepath = 'outputs/model/' + filename
                 
-                'model_state_dict': llr_state_dict,
-                'optimizer_state_dict': optim_state_dict,
-                'train_loss': train_loss,
-                
-                'snrdb_low': snrdb_low,
-                'snrdb_high': snrdb_high,
-                'ofdm_size': ofdm_size,
-                'tx_timestamp': tx_timestamp,
-        
-                }, filepath)
+            torch.save({
+                    'num_epochs': num_epochs,
+                    'batch_size': batch_size,
+                    'learning_rate': learning_rate,
+                    'wmse_epsilon': wmse_epsilon_val,
+                    'expansion': expansion,
+                    
+                    'pretrained_filename': pretrained_filename,
+                    
+                    'qbits': qbits_val,
+                    'clipdb': clipdb_val,
+                    
+                    'model_state_dict': llr_state_dict,
+                    'optimizer_state_dict': optim_state_dict,
+                    'train_loss': train_loss,
+                    
+                    'snrdb_low': snrdb_low,
+                    'snrdb_high': snrdb_high,
+                    'ofdm_size': ofdm_size,
+                    'tx_timestamp': tx_timestamp,
+            
+                    }, filepath)

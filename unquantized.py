@@ -9,10 +9,10 @@ from ofdm.ofdm_functions import load_tx, gen_qpsk_data
 
 #--- VARIABLES ---#
 
-num_epochs = 20
-batch_size = np.power(2, 10)
+num_epochs = 1000
+batch_size = np.power(2, 14)
 learning_rate = .001
-wmse_epsilon = 1e-1
+wmse_epsilon = 1e-4
 expansion = 8 #Hidden layer expansion
 
 qbits = 0
