@@ -19,7 +19,8 @@ def load_tx(timestamp):
 
     return enc_bits, num_samples, ofdm_size, bits_per_symbol
 
-def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size):
+# Channel taps must be in frequency and be a vector of length ofdm_size
+def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size, channel=None):
     
     # Reshape bits into two columns for QPSK modulation
     bits = -2 * bits.reshape((-1, 2)) + 1 #(0 -> 1, 1 -> -1)
@@ -42,7 +43,8 @@ def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size):
     symbols = tx_symbols.reshape((-1, ofdm_size)).T
     
     # Multiply channel by the frequency taps if specified
-    #symbols = rayleigh_frequency_taps.broadcast_to(symbols) * symbols
+    if channel is not None:
+        symbols = np.broadcast_to(channel, symbols.shape) * symbols
     
     # Create OFDM symbols
     ofdm_symbols = np.matmul(DFT(ofdm_size).conj().T, symbols)
@@ -59,11 +61,17 @@ def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size):
 
     # De-OFDM signal at the receiver
     deofdm_symbols = np.matmul(DFT(ofdm_size), received_symbols)
+    
+    if channel is not None:
+        deofdm_symbols = deofdm_symbols / np.broadcast_to(channel, deofdm_symbols.shape)
 
     # Compute noise power for LLR computation
     # Note that noise power is 1/2 because this
     # is noise power per dimension
-    noise_power = .5 * (1 / snr_val)
+    if channel is not None:
+        noise_power = .5 * (1 / (snr_val * np.abs(np.broadcast_to(channel, snr_val.shape))**2))
+    else:
+        noise_power = .5 * (1 / snr_val)
 
     # Compute log-likelihood ratios for QPSK, this happens per dimension
     # LLR is log(Pr=1 / Pr=0) (i.e. +inf = 1, -inf = -1)
@@ -85,7 +93,9 @@ def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size):
 
     return tx_signal, rx_signal, rx_symbols, rx_llrs, snrdb
 
-def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size):
+# Channel taps must be in frequency and be a vector of length ofdm_size.
+# This channel must be the same as for the gen_qpsk_data
+def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size, channel=None):
     rx_signal = rx_signal.reshape(-1, ofdm_size)
     
     # Convert clip ratio
@@ -122,13 +132,19 @@ def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size):
     # De-OFDM quantized signal at the receiver
     deofdm_qsymbols = np.matmul(DFT(ofdm_size), qrx_signal_rescaled.T)
 
+    if channel is not None:
+        deofdm_qsymbols = deofdm_qsymbols / np.broadcast_to(channel, deofdm_qsymbols.shape)
+
     # Compute the SNR for each OFDM symbol
     snr_val = np.power(10, np.broadcast_to(snrdb_list.T, deofdm_qsymbols.shape)/10)
 
     # Compute noise power for LLR computation
     # Note that noise power is 1/2 because this
     # is noise power per dimension
-    noise_power = .5 * (1 / snr_val)
+    if channel is not None:
+        noise_power = .5 * (1 / (snr_val * np.abs(np.broadcast_to(channel, snr_val.shape))**2))
+    else:
+        noise_power = .5 * (1 / snr_val)
     
     # Compute log-likelihood ratios for QPSK, this happens per dimension
     # LLR is log(Pr=1 / Pr=0) (i.e. +inf = 1, -inf = -1)
