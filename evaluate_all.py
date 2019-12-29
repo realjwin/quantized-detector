@@ -38,8 +38,10 @@ for r, d, f in os.walk(model_path):
             if qbits != 0:
                 filenames.append(file)
 
-for trained_filename in filenames:
-    print('Testing file: {}'.format(trained_filename))
+num_filenames = len(filenames)
+
+for idx, trained_filename in enumerate(filenames):
+    print('Testing file ({}/{}): {}'.format(idx, num_filenames, trained_filename))
     
     #--- LOAD TRAINED NETWORK ---#
 
