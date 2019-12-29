@@ -91,6 +91,8 @@ for wmse_epsilon_idx, wmse_epsilon_val in enumerate(wmse_epsilon):
                     'snrdb_low': snrdb_low,
                     'snrdb_high': snrdb_high,
                     'ofdm_size': ofdm_size,
+                    'num_samples': num_samples,
+                    'bits_per_symbol': bits_per_symbol,
                     'tx_timestamp': tx_timestamp,
             
                     }, filepath)

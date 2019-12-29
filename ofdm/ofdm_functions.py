@@ -99,7 +99,7 @@ def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size, channel=None
     rx_signal = rx_signal.reshape(-1, ofdm_size)
     
     # Convert clip ratio
-    clip_ratio = np.power(10, (clipdb/10))        
+    clip_ratio = np.power(10, (clipdb/10))       
 
     # Convert SNR
     snr = np.power(10, snrdb_list/10)
