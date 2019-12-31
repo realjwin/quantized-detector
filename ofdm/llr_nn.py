@@ -27,6 +27,7 @@ class LLRestimator(nn.Module):
         
         return self.activation(self.final(x))
     
+# Not currently used
 class LLRestimator_channel(nn.Module):
     def __init__(self, ofdm_size, bits_per_symbol, expansion):
         super(LLRestimator_channel, self).__init__()
@@ -35,7 +36,7 @@ class LLRestimator_channel(nn.Module):
         
         self.activation = nn.Tanh()
 
-        self.hidden1 = nn.Linear(3*self.ofdm_size+1, expansion*bits_per_symbol*self.ofdm_size, bias=True)
+        self.hidden1 = nn.Linear(4*self.ofdm_size+1, expansion*bits_per_symbol*self.ofdm_size, bias=True)
         self.hidden2 = nn.Linear(expansion*bits_per_symbol*self.ofdm_size, expansion*bits_per_symbol*self.ofdm_size, bias=True)
         self.hidden3 = nn.Linear(expansion*bits_per_symbol*self.ofdm_size, expansion*bits_per_symbol*self.ofdm_size, bias=True)
         

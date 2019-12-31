@@ -19,7 +19,8 @@ def load_tx(timestamp):
 
     return enc_bits, num_samples, ofdm_size, bits_per_symbol
 
-# Channel taps must be in frequency and be a vector of length ofdm_size
+# Channel taps must be in frequency and be a matrix with each column
+# corresponding to a channel for that OFDM symbol, so size: ofdm_size x num_samples
 def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size, channel=None):
     
     # Reshape bits into two columns for QPSK modulation
@@ -44,7 +45,7 @@ def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size, channel=None):
     
     # Multiply channel by the frequency taps if specified
     if channel is not None:
-        symbols = np.broadcast_to(channel, symbols.shape) * symbols
+        symbols = channel * symbols
     
     # Create OFDM symbols
     ofdm_symbols = np.matmul(DFT(ofdm_size).conj().T, symbols)
@@ -63,7 +64,7 @@ def gen_qpsk_data(bits, snrdb_low, snrdb_high, ofdm_size, channel=None):
     deofdm_symbols = np.matmul(DFT(ofdm_size), received_symbols)
     
     if channel is not None:
-        deofdm_symbols = deofdm_symbols / np.broadcast_to(channel, deofdm_symbols.shape)
+        deofdm_symbols = deofdm_symbols / channel
 
     # Compute noise power for LLR computation
     # Note that noise power is 1/2 because this
@@ -133,7 +134,7 @@ def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size, channel=None
     deofdm_qsymbols = np.matmul(DFT(ofdm_size), qrx_signal_rescaled.T)
 
     if channel is not None:
-        deofdm_qsymbols = deofdm_qsymbols / np.broadcast_to(channel, deofdm_qsymbols.shape)
+        deofdm_qsymbols = deofdm_qsymbols / channel
 
     # Compute the SNR for each OFDM symbol
     snr_val = np.power(10, np.broadcast_to(snrdb_list.T, deofdm_qsymbols.shape)/10)
@@ -142,7 +143,7 @@ def gen_qpsk_qdata(rx_signal, snrdb_list, qbits, clipdb, ofdm_size, channel=None
     # Note that noise power is 1/2 because this
     # is noise power per dimension
     if channel is not None:
-        noise_power = .5 * (1 / (snr_val * np.abs(np.broadcast_to(channel, snr_val.shape))**2))
+        noise_power = .5 * (1 / (snr_val * np.abs(channel)**2))
     else:
         noise_power = .5 * (1 / snr_val)
     
